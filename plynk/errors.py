@@ -1,0 +1,2 @@
+class PlinkError(Exception):
+    pass

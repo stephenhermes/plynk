@@ -1,0 +1,12 @@
+.DS_Store
+__pycache__/
+*.egg-info/
+requirements-dev.txt
+build/
+
+# Used by pytest
+.cache
+.pytest_cache/
+
+# Used by mypy
+.mypy_cache
