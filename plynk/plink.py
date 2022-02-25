@@ -2,7 +2,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import subprocess
-from typing import Any
+from typing import Any, Callable
 
 from .errors import PlinkError
 from .inspect import InspectionView
@@ -10,11 +10,9 @@ from .utils import _get_valid_plink2_binary, _get_valid_plink1_9_binary
 
 
 class Plink:
-
-    PLINK1: str | None = _get_valid_plink1_9_binary()
-    PLINK2: str = _get_valid_plink2_binary()
-
-    def __init__(self, workdir: Path | str | None):
+    def __init__(
+        self, workdir: Path | str | None = None, binary: Path | str | None = None
+    ):
         """Entrypoint to plink.
 
         Parameters
@@ -23,6 +21,11 @@ class Plink:
             The directory in which plink should run. If None, then will
             use the current working directory.
 
+        binary : Pathlike or None, optional, default None
+            One of The location of the plink binary to use, `None`, or a string
+            specifying the version number. If `None` provided, will default to
+            plink 2.
+
         """
         if workdir:
             workdir = Path(workdir)
@@ -30,6 +33,8 @@ class Plink:
                 raise ValueError(f"No such directory: {workdir}")
         self.workdir = workdir
         self._workdir = self.workdir if self.workdir else Path(os.getcwd())
+        self.binary = binary
+        self._binary = self._validate_binary(binary)
 
     def __repr__(self) -> str:
         workdir = self.workdir.as_posix() if self.workdir else None  # type: ignore
@@ -39,16 +44,10 @@ class Plink:
         self,
         bfile: str | Path | None = None,
         out: str | Path | None = None,
-        _version: str = "2",
         **kwargs: Any,
     ) -> InspectionView:
         """Runs a plink command with the parameters passed."""
-
-        plink = self.PLINK1 if _version != "2" else self.PLINK2
-        if plink is None:
-            raise ValueError("Cannot use plink v{_version} if not installed.")
-
-        cmd = [plink]
+        cmd = [self._binary]
         params = kwargs.copy()
 
         # Set bfile:
@@ -79,3 +78,18 @@ class Plink:
             raise PlinkError(process.stderr.decode("utf-8"))
 
         return InspectionView(process.stdout, params)
+
+    def _validate_binary(self, binary: str | Path | None) -> str:
+        valid_strings = {
+            "1": _get_valid_plink1_9_binary,
+            "1.9": _get_valid_plink1_9_binary,
+            "2": _get_valid_plink2_binary,
+        }
+        if binary is None:
+            return _get_valid_plink2_binary()
+        if binary in valid_strings:
+            return valid_strings[binary]()
+        binary = Path(binary)
+        if binary.exists():
+            return binary.as_posix()
+        raise ValueError(f"No plink binary found matching '{binary}'")

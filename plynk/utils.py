@@ -23,20 +23,16 @@ def _validate_plink_version(binary: str, version: str) -> bool:
     return version in version_string
 
 
-def _get_valid_plink1_9_binary() -> str | None:
+def _get_valid_plink1_9_binary() -> str:
     """Get the full path to plink 1.9 binary."""
     plink1_9 = shutil.which("plink")
     if plink1_9 is None:
-        warnings.warn(
-            "plink (1.9) is not on the path. Some functionality may be missing."
-        )
-        return None
+        raise PlinkError("`plink` (1.9) is not on the path.")
     if not _validate_plink_version(plink1_9, "1.9"):
         warnings.warn(
             "plink 1.X is installed, but not version 1.9. "
             "Some functionality may be missing."
         )
-        return None
     return plink1_9
 
 
